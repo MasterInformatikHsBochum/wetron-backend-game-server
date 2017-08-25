@@ -1,0 +1,14 @@
+{
+  "name": "wetron-backend-game-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^3.1.0"
+  }
+}
