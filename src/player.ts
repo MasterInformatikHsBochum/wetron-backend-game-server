@@ -1,5 +1,8 @@
 export class Player {
-    constructor(readonly id : number) {
-        
+    public controllerConnected: boolean
+    public viewConnected: boolean
+
+    constructor(readonly id: number) {
+
     }
 }
