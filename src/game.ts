@@ -1,5 +1,5 @@
 import { Player } from './player'
-import { Message, EVENT_TYPE, SENDER_TYPE } from './message'
+import { Message, EVENT_TYPE } from './message'
 
 // TODO
 // sender:
@@ -16,30 +16,48 @@ enum GAME_STATE {
 
 export class Game {
     public writeMessage: (message: Message) => void
-    private players: { [playerId: number]: Player } = {}
     private state: GAME_STATE = GAME_STATE.WAITING_FOR_PLAYERS
+    private viewHash: { [connectionId: number]: Player } = {}
+    private controllerHash: { [connectionId: number]: Player } = {}
 
-    constructor(readonly gameId: number, players: Player[]) {
-        players.forEach(player => {
-            this.players[player.id] = player;
-        });
+    constructor(readonly gameId: number, readonly playerList: Player[]) {
     }
 
-    public onMessage(message: Message) {
-        if (message.gameId !== this.gameId) {
-            console.log("ERR: GameId does not match! Got: " + message.gameId + "expected: !" + this.gameId)
+    public onMessage(request: Message) {
+        console.log(request.toJson())
+        if (request.gameId !== this.gameId) {
+            console.log("ERR: GameId does not match! Got: " + request.gameId + "expected: !" + this.gameId)
             return;
         }
 
-        switch (message.senderType) {
-            case SENDER_TYPE.CONTROLLER:
-                this.onControllerMessage(message)
-                break;
-            case SENDER_TYPE.VIEW:
-                this.onViewMessage(message)
+        switch (request.eventType) {
+            case EVENT_TYPE.VIEW_CONNECT_REQUEST:
+                console.log(this.playerList[request.value["player-id"]]);
+                if (this.viewHash[request.connectionId]) {
+                    console.log("ERR: View already Connected! Id: " + request.connectionId);
+                } else {
+                    for (let player of this.playerList) {
+                        let alreadyConnected = false
+                        for(let connectionId in this.viewHash) {
+                            if (this.viewHash[connectionId] == player) {
+                                alreadyConnected = true;
+                                break;
+                            }
+                        }
+                        if (alreadyConnected == false) {
+                            console.log("player connected! Id: " + request.connectionId);
+                            this.viewHash[request.connectionId] = player;
+                            let value = {}
+                            value["p"] = 1
+                            value["o"] = [2]
+                            let response = new Message(request.connectionId, this.gameId, EVENT_TYPE.CTRL_CONNECT_RESPONSE, value)
+                            this.writeMessage(response)
+                            break;
+                        }
+                    }
+                }
                 break;
             default:
-                console.log("ERR: Unknown SENDER_TYPE (" + message.senderType + ")!")
         }
     }
 
@@ -60,25 +78,25 @@ export class Game {
     }
 
     private waitingForPlayers() {
-        let all_ready = true
-        for (let playerId in this.players) {
-            let player = this.players[playerId]
-            if (!player.controllerConnected || !player.viewConnected) {
-                all_ready = false;
-                break;
-            }
-        }
+        // let all_ready = true
+        // for (let playerId in this.players) {
+        //     let player = this.players[playerId]
+        //     if (!player.controllerConnected || !player.viewConnected) {
+        //         all_ready = false;
+        //         break;
+        //     }
+        // }
 
-        if (all_ready) {
-            for (let playerId in this.players) {
-                let message = this.prepareMessage();
-                message.playerId = Number(playerId);
-                message.eventType = EVENT_TYPE.GAME_STARTUP;
-                this.writeMessage(message)
-            }
+        // if (all_ready) {
+        //     for (let playerId in this.players) {
+        //         let message = this.prepareMessage();
+        //         message.playerId = Number(playerId);
+        //         message.eventType = EVENT_TYPE.GAME_STARTUP;
+        //         this.writeMessage(message)
+        //     }
 
-            this.state = GAME_STATE.RUNNING;
-        }
+        //     this.state = GAME_STATE.RUNNING;
+        // }
     }
 
     private running() {
@@ -87,58 +105,5 @@ export class Game {
 
     private end() {
 
-    }
-
-    private prepareMessage(): Message {
-        let message = new Message();
-        message.gameId = this.gameId;
-        message.senderType = SENDER_TYPE.GAME;        
-        return message;
-    }
-
-    private onControllerMessage(message: Message) {
-        let player: Player
-        try {
-            player = this.players[message.playerId]
-        } catch (e) {
-            console.log("ERR: PlayerId(" + message.playerId + ") does not exist!");
-        }
-
-        switch (message.eventType) {
-            case EVENT_TYPE.CLIENT_CONNECT:
-                player.controllerConnected = true;
-                break;
-            case EVENT_TYPE.CLIENT_DISCONNECT:
-                player.controllerConnected = false;
-                break;
-            case EVENT_TYPE.CLIENT_STARTUP_ACK:
-                break;
-            case EVENT_TYPE.CLIENT_CHANGE_DIRECTION:
-                break;
-            default:
-        }
-    }
-
-    private onViewMessage(message: Message) {
-        let player: Player
-        try {
-            player = this.players[message.playerId];
-        } catch (e) {
-            console.log("ERR: PlayerId(" + message.playerId + ") does not exist!");
-        }
-
-        switch (message.eventType) {
-            case EVENT_TYPE.CLIENT_CONNECT:
-                player.viewConnected = true;
-                break;
-            case EVENT_TYPE.CLIENT_DISCONNECT:
-                player.viewConnected = false;
-                break;
-            case EVENT_TYPE.CLIENT_STARTUP_ACK:
-                break;
-            case EVENT_TYPE.CLIENT_CHANGE_DIRECTION:
-                break;
-            default:
-        }
     }
 }

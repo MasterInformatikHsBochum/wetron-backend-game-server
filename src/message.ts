@@ -1,73 +1,48 @@
-export enum SENDER_TYPE {
-    CONTROLLER = 1,
-    VIEW = 2,
-    GAME = 3
-};
-
 export enum EVENT_TYPE {
-    CLIENT_CONNECT = 0,
-    CLIENT_DISCONNECT = 1,
-    CLIENT_STARTUP_ACK = 3,
-    CLIENT_CHANGE_DIRECTION = 6,
-    GAME_STARTUP = 2,
-    GAME_START = 4,
-    GAME_END = 5,
-    GAME_POSITION = 7
+    VIEW_CONNECT_REQUEST = 3,
+    VIEW_CONNECT_RESPONSE = 4,
+    VIEW_GAME_START = 5,
+    VIEW_GAME_POSITION = 6,
+    VIEW_GAME_END = 7,
+    CTRL_CONNECT_REQUEST = 8,
+    CTRL_CONNECT_RESPONSE = 9,
+    CTRL_GAME_START = 10,
+    CTRL_CHANGE_DIRECTION = 11,
+    CTRL_GAME_END = 12
 };
 
 export class Message {
-    public gameId: number
-    public eventType: EVENT_TYPE
-    public playerId: number
-    public senderType: SENDER_TYPE
-    public value
+    constructor(readonly connectionId: number,
+        readonly gameId: number,
+        readonly eventType: EVENT_TYPE,
+        readonly value) {
 
-    public static fromJson(json) {
-        let message = new Message;
-
-        if (json.g === 0) {
+        if (gameId === 0) {
             throw new RangeError("gameId can't be 0")
         }
 
-        if (json.p === 0) {
-            throw new RangeError("playerId can't be 0")
+        if (connectionId === 0) {
+            throw new RangeError("connectionId can't be 0")
         }
-
-        // gameId
-        message.gameId = json.g
-
-        // eventType
-        if (EVENT_TYPE[json.e]) {
-            message.eventType = json.e
-        }
-
-        // playerId
-        message.playerId = json.p
-
-        // type
-        switch (json.t) {
-            case 'c':
-                message.senderType = SENDER_TYPE.CONTROLLER
-                break;
-            case 'v':
-                message.senderType = SENDER_TYPE.VIEW
-                break;
-            default:
-        }
-        message.senderType = json.t
-
-        // value
-        message.value = json.v
     }
 
-    public static toJson(message: Message) {
-        let json;
-        json.g = message.gameId;
-        json.e = message.eventType;
-        json.p = message.playerId;
-        json.t = message.playerId;
-        json.v = message.value;
+    public static fromJson(json: JSON): Message {
+        let msg = json["msg"]
+        let message = new Message(json["id"], msg["g"], msg["e"], msg["v"]);
 
-        return json;
+        return message
+    }
+
+    public toJson(): string {
+        let msg = {};
+        msg["g"] = this.gameId;
+        msg["e"] = this.eventType;
+        msg["v"] = this.value;
+
+        let json = {}
+        json["id"] = this.connectionId
+        json["msg"] = msg
+
+        return JSON.stringify(json);
     }
 }
