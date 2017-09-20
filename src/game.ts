@@ -23,6 +23,12 @@ export class Game {
     constructor(readonly gameId: number, readonly playerList: Player[]) {
     }
 
+    public onWsConnect() {
+        console.log("onConnect")
+        let message = new Message(this.gameId, 1, "g", EVENT_TYPE.CONNECT_REQUEST, null)
+        this.writeMessage(message)
+    }
+
     public onMessage(request: Message) {
         console.log(request.toJson())
         if (request.gameId !== this.gameId) {
@@ -31,30 +37,13 @@ export class Game {
         }
 
         switch (request.eventType) {
-            case EVENT_TYPE.VIEW_CONNECT_REQUEST:
-                console.log(this.playerList[request.value["player-id"]]);
-                if (this.viewHash[request.connectionId]) {
-                    console.log("ERR: View already Connected! Id: " + request.connectionId);
+            case EVENT_TYPE.CONNECT_REQUEST:
+                if (request.senderType == "v") {
+                    this.onViewConnectRequest(request);
+                } else if (request.senderType == "c") {
+                    this.onControllerConnectRequest(request)
                 } else {
-                    for (let player of this.playerList) {
-                        let alreadyConnected = false
-                        for(let connectionId in this.viewHash) {
-                            if (this.viewHash[connectionId] == player) {
-                                alreadyConnected = true;
-                                break;
-                            }
-                        }
-                        if (alreadyConnected == false) {
-                            console.log("player connected! Id: " + request.connectionId);
-                            this.viewHash[request.connectionId] = player;
-                            let value = {}
-                            value["p"] = 1
-                            value["o"] = [2]
-                            let response = new Message(request.connectionId, this.gameId, EVENT_TYPE.CTRL_CONNECT_RESPONSE, value)
-                            this.writeMessage(response)
-                            break;
-                        }
-                    }
+                    console.log("ERR: unknown senderType: " + request.senderType)
                 }
                 break;
             default:
@@ -75,6 +64,54 @@ export class Game {
             default:
                 console.log("ERR: Unknown GAME_STATE (" + this.state + ")!")
         }
+    }
+
+    private onViewConnectRequest(request: Message) {
+        let value = {}
+        let player = this.getPlayerById(request.playerId)
+        console.log(player + " " + player.viewConnected)
+        if (player != null && player.viewConnected == false) {
+            player.viewConnected = true
+
+            value["success"] = true
+
+            let otherPlayerList: Number[] = new Array()
+            for (let p of this.playerList) {
+                if (p.id != request.playerId) {
+                    otherPlayerList.push(p.id)
+                }
+            }
+        } else {
+            value["success"] = false
+        }
+
+        // send response
+        let response = new Message(this.gameId, request.playerId, "g", EVENT_TYPE.VIEW_CONNECT_RESPONSE, value)
+        this.writeMessage(response)
+    }
+
+    private onControllerConnectRequest(request: Message) {
+        let player = this.getPlayerById(request.playerId)
+        let value = {}
+        if (player != null && player.controllerConnected == false) {
+            player.controllerConnected = true
+            value["success"] = true
+        } else {
+            value["success"] = false
+        }
+
+        let response = new Message(this.gameId, request.playerId, "g", EVENT_TYPE.CTRL_CONNECT_RESPONSE, value)
+        this.writeMessage(response)
+    }
+
+    private getPlayerById(playerId: number) {
+        for (let player of this.playerList) {
+            if (player.id == playerId) {
+                return player
+            }
+        }
+
+        return null
     }
 
     private waitingForPlayers() {
