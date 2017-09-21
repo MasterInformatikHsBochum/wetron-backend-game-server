@@ -10,7 +10,6 @@ var progress = require('single-line-log').stdout;
 // - c1: controller player 1
 // - v1: view player 1
 
-// typescript fehlt
 // production target als npm
 
 export enum GAME_STATE {
