@@ -1,7 +1,8 @@
 export enum EVENT_TYPE {
     CONNECT_REQUEST = 0,
     VIEW_CONNECT_RESPONSE = 1,
-    CTRL_CONNECT_RESPONSE = 8
+    CTRL_CONNECT_RESPONSE = 8,
+    GAME_STARTUP = 4
 };
 
 // export enum SENDER_TYPE {
@@ -11,19 +12,11 @@ export enum EVENT_TYPE {
 // }
 
 export class Message {
-    constructor(readonly gameId: number,
-        readonly playerId: number,
-        readonly senderType: string,
-        readonly eventType: EVENT_TYPE,
-        readonly value) {
-
-        if (gameId === 0) {
-            throw new RangeError("gameId can't be 0")
-        }
-
-        if (playerId === 0) {
-            throw new RangeError("playerId can't be 0")
-        }
+    constructor(public readonly gameId: number,
+        public readonly playerId: number,
+        public readonly senderType: string,
+        public readonly eventType: EVENT_TYPE,
+        public readonly value) {
     }
 
     public static fromJson(json: JSON): Message {

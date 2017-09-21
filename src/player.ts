@@ -1,6 +1,6 @@
 export class Player {
-    public controllerConnected: boolean = false
-    public viewConnected: boolean = false
+    public controllerConnected = false
+    public viewConnected = false
 
     constructor(readonly id: number) {
 

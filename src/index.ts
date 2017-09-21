@@ -2,6 +2,8 @@ import { Game } from './game';
 import { Player } from './player';
 import * as WebSocket from 'ws'
 import { Message } from './message'
+import * as Collections from 'typescript-collections';
+
 
 // let ws = new WebSocket('ws:172.17.0.1:8080')
 let ws = new WebSocket('ws:193.175.85.50:80')
@@ -10,31 +12,32 @@ let ws = new WebSocket('ws:193.175.85.50:80')
 console.log('wetron-backend-game-server start')
 
 // Init Game
-let players: Player[] = new Array();
-players.push(new Player(1))
-players.push(new Player(2))
-let game = new Game(1, players)
+let playerList = new Collections.LinkedList< Player>();
+playerList.add(new Player(1))
+playerList.add(new Player(2))
+let game = new Game(1, playerList)
 
 // Init Web Socket
 game.writeMessage = (message) => {
-    console.log(message.toJson())
+    console.log("ws: send message: %s", message.toJson())
     ws.send(message.toJson());
 }
 
 ws.on('message', (message) => {
+    console.log("ws: message received: %s", message)    
     game.onMessage(Message.fromJson(JSON.parse(message.toString())))
-    console.log("ws: message received: %s", message)
 });
 
 ws.on('open', () => {
     console.log("ws: open")
-    console.log(game)
-    game.onWsConnect()
+    game.onConnect()
 });
 
 // init Main Timer
 let timer: NodeJS.Timer
-timer = global.setInterval(game.onMainTimerTick, 1000);
+timer = global.setInterval(function () {
+    game.onMainTimerTick();
+}, 1000);
 
 // wss.on('connection', (ws, req) => {
 //     ws.on('message', (message) => {
