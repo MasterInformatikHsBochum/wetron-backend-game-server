@@ -1,7 +1,7 @@
 import { Player } from './player'
 import { Message, EVENT_TYPE } from './message'
 import * as Collections from 'typescript-collections';
-var progress = require('single-line-log').stdout;
+import { Utils } from './utils'
 
 // TODO
 // sender:
@@ -13,15 +13,17 @@ var progress = require('single-line-log').stdout;
 // production target als npm
 
 export enum GAME_STATE {
-    WAITING_FOR_PLAYERS = 1,
-    RUNNING = 2,
-    END = 3
+    WAITING_FOR_PLAYERS,
+    COUNTDOWN,
+    RUNNING,
+    END
 }
 
 export class Game {
     public writeMessage: (message: Message) => void;
-    private m_playerDict = new Collections.Dictionary<number, Player>();
-    private m_state = GAME_STATE.WAITING_FOR_PLAYERS
+    private _playerDict = new Collections.Dictionary<number, Player>();
+    private _state = GAME_STATE.WAITING_FOR_PLAYERS
+    private _countDown = 0
 
     constructor(
         readonly gameId: number,
@@ -30,20 +32,18 @@ export class Game {
 
         // add players to dictionary
         playerList.forEach(player => {
-            this.m_playerDict.setValue(player.id, player);
+            this._playerDict.setValue(player.id, player);
         });
     }
 
     public onConnect() {
-        console.log("onConnect")
         let message = new Message(this.gameId, null, "g", EVENT_TYPE.CONNECT_REQUEST, null)
         this.writeMessage(message)
     }
 
     public onMessage(request: Message) {
-        console.log(request.toJson())
         if (request.gameId !== this.gameId) {
-            console.log("ERR: GameId does not match! Got: " + request.gameId + "expected: !" + this.gameId)
+            Utils.error("GameId does not match! Got: " + request.gameId + "expected: !" + this.gameId)
             return;
         }
 
@@ -54,7 +54,22 @@ export class Game {
                 } else if (request.senderType == "c") {
                     this.onControllerConnectRequest(request)
                 } else {
-                    console.log("ERR: unknown senderType: " + request.senderType)
+                    Utils.error("Unknown senderType: " + request.senderType)
+                }
+                break;
+            case EVENT_TYPE.DISCONNECT:
+                if (request.senderType == "v") {
+                    let player = this._playerDict.getValue(request.playerId);
+                    if (player) {
+                        player.viewConnected = false;
+                    }
+                } else if (request.senderType == "c") {
+                    let player = this._playerDict.getValue(request.playerId);
+                    if (player) {
+                        player.controllerConnected = false;
+                    }
+                } else {
+                    Utils.error("Unknown senderType: " + request.senderType)
                 }
                 break;
             default:
@@ -62,36 +77,41 @@ export class Game {
     }
 
     public onMainTimerTick() {
-        switch (this.m_state) {
+        switch (this._state) {
             case GAME_STATE.WAITING_FOR_PLAYERS:
-                this.waitingForPlayers();
+                this.waitingForPlayersState();
+                break;
+            case GAME_STATE.COUNTDOWN:
+                this.countdownState();
                 break;
             case GAME_STATE.RUNNING:
-                this.running();
+                this.runningState();
                 break;
             case GAME_STATE.END:
-                this.end();
+                this.endState();
                 break;
             default:
-                console.log("ERR: Unknown GAME_STATE:", this.m_state);
+                Utils.error("Unknown GAME_STATE: " + this._state);
         }
     }
 
     private onViewConnectRequest(request: Message) {
         let value = {}
-        let player = this.m_playerDict.getValue(request.playerId)
-        console.log(player + " " + player.viewConnected)
+        let player = this._playerDict.getValue(request.playerId)
+
         if (player && player.viewConnected == false) {
             player.viewConnected = true
 
             value["success"] = true
 
             let otherPlayerList: Number[] = new Array()
-            for (let playerId of this.m_playerDict.keys()) {
+            for (let playerId of this._playerDict.keys()) {
                 if (playerId != request.playerId) {
                     otherPlayerList.push(playerId)
                 }
             }
+
+            value["o"] = otherPlayerList
         } else {
             value["success"] = false;
         }
@@ -102,7 +122,7 @@ export class Game {
     }
 
     private onControllerConnectRequest(request: Message) {
-        let player = this.m_playerDict.getValue(request.playerId);
+        let player = this._playerDict.getValue(request.playerId);
         let value = {};
         if (player && player.controllerConnected == false) {
             player.controllerConnected = true;
@@ -115,44 +135,66 @@ export class Game {
         this.writeMessage(response);
     }
 
-    private waitingForPlayers() {
+    private waitingForPlayersState() {
         let all_ready = true;
-        for (let playerId of this.m_playerDict.keys()) {
-            let player = this.m_playerDict.getValue(playerId);
+        for (let playerId of this._playerDict.keys()) {
+            let player = this._playerDict.getValue(playerId);
             if (!player.controllerConnected || !player.viewConnected) {
                 all_ready = false;
             }
         }
 
-        if (!all_ready) { 
+        if (!all_ready) {
             // print progress in single line
-            progress("waiting for players: " + JSON.stringify(this.playerList));
+            Utils.debug("waiting for players: " + JSON.stringify(this.playerList));
         } else {
-            progress.clear(); // enables new lines again
-            for (let playerId of this.m_playerDict.keys()) {
-                let value = {};
-                value["countdown-ms"] = 3000;
-                let message = new Message(this.gameId, playerId, "g", EVENT_TYPE.GAME_STARTUP, value);
-                this.writeMessage(message);
-            }
+            // send positions of all players to each player
+            this.sendAllPositions();
 
-            this.m_state = GAME_STATE.RUNNING;
+            this._state = GAME_STATE.COUNTDOWN;
         }
     }
 
-    private running() {
+    private sendCountDown() {
+        for (let playerId of this._playerDict.keys()) {
+            let value = {};
+            value["countdown-ms"] = 3000;
+            let message = new Message(this.gameId, playerId, "g", EVENT_TYPE.COUNTDOWN, value);
+            this.writeMessage(message);
+        }
+    }
+
+    private countdownState() {
+        if (this._countDown == 0) {
+            this._state = GAME_STATE.RUNNING;
+        }
+    }
+
+    private runningState() {
 
     }
 
-    private end() {
+    private endState() {
 
+    }
+
+    private sendAllPositions() {
+        let positionList = new Collections.LinkedList();
+        for (let player of this._playerDict.values()) {
+            positionList.add({ "p": player.id, "x": 0, "y": 0, "d": 0.0 })
+        }
+
+        for (let player of this._playerDict.values()) {
+            let message = new Message(this.gameId, player.id, "g", EVENT_TYPE.POSITION, positionList.toArray());
+            this.writeMessage(message);
+        }
     }
 
     get playerList(): Player[] {
-        return this.m_playerDict.values();
+        return this._playerDict.values();
     }
 
-    get state() {
-        return this.m_state;
+    get state(): GAME_STATE {
+        return this._state;
     }
 }

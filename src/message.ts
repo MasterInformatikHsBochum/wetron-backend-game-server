@@ -2,7 +2,9 @@ export enum EVENT_TYPE {
     CONNECT_REQUEST = 0,
     VIEW_CONNECT_RESPONSE = 1,
     CTRL_CONNECT_RESPONSE = 8,
-    GAME_STARTUP = 4
+    DISCONNECT = 9,       
+    COUNTDOWN = 4, 
+    POSITION = 7
 };
 
 // export enum SENDER_TYPE {
