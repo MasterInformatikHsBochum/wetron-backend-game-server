@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "start": "npm run build:live",
+    "start": "./node_modules/.bin/ts-node ./src/index.ts",
+    "serve": "npm run build:live",
     "build:live": "nodemon --exec ./node_modules/.bin/ts-node -- ./src/index.ts",
     "test": "mocha -r ts-node/register test/**/*.ts"
   },
