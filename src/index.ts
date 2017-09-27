@@ -6,8 +6,9 @@ import * as Collections from 'typescript-collections';
 import * as WebSocket from 'ws'
 
 
-// let ws = new WebSocket('ws:172.17.0.1:8080')
-let ws = new WebSocket('ws:193.175.85.50:80')
+// let ws = new WebSocket('ws:172.17.0.1:8080') // local
+// let ws = new WebSocket('ws:193.175.85.50:80') // hs-bochum
+let ws = new WebSocket('ws:5.45.108.170:8000') // marius
 
 // let wss = new WebSocket.Server({ port: 8080 })
 
@@ -16,7 +17,7 @@ console.log('wetron-backend-game-server start')
 // Init Game
 let playerList = new Collections.LinkedList< Player>();
 playerList.add(new Player(1))
-// playerList.add(new Player(2))
+playerList.add(new Player(2))
 let game = new Game(1, playerList)
 
 // Init Web Socket

@@ -14,9 +14,9 @@ export class Utils {
     }
     
     static log(message?: any, ...optionalParams: any[]) {
-        if (message != lastMsg) {
+        // if (message != lastMsg) {
             console.log(message);
             lastMsg = message;
-        }
+        // }
     }
 }

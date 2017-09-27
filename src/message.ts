@@ -4,7 +4,9 @@ export enum EVENT_TYPE {
     CTRL_CONNECT_RESPONSE = 8,
     DISCONNECT = 9,       
     COUNTDOWN = 4, 
-    POSITION = 7
+    POSITION = 7,
+    CTRL_CHANGE_DIRECTION = 6,
+    GAME_END = 5
 };
 
 // export enum SENDER_TYPE {

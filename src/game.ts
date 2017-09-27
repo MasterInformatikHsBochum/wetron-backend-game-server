@@ -1,5 +1,5 @@
 import { Grid } from './grid';
-import { Player } from './player'
+import { PLAYER_DIRECTION, Player, PLAYER_STATE } from './player';
 import { Message, EVENT_TYPE } from './message'
 import * as Collections from 'typescript-collections';
 import { Utils } from './utils'
@@ -26,6 +26,7 @@ export class Game {
     private _state = GAME_STATE.WAITING_FOR_PLAYERS;
     private _countDownTimer: NodeJS.Timer;
     private _countDownTimeLeft = 0;
+    private _grid = new Grid(100, 100);
 
     constructor(
         readonly gameId: number,
@@ -35,6 +36,7 @@ export class Game {
         // add players to dictionary
         playerList.forEach(player => {
             this._playerDict.setValue(player.id, player);
+            player.x = player.id * 20;
         });
     }
 
@@ -43,36 +45,40 @@ export class Game {
         this.writeMessage(message)
     }
 
-    public onMessage(request: Message) {
-        if (request.gameId !== this.gameId) {
-            Utils.error("GameId does not match! Got: " + request.gameId + "expected: !" + this.gameId)
+    public onMessage(message: Message) {
+        if (message.gameId !== this.gameId) {
+            Utils.error("GameId does not match! Got: " + message.gameId + "expected: !" + this.gameId)
             return;
         }
 
-        switch (request.eventType) {
+        switch (message.eventType) {
             case EVENT_TYPE.CONNECT_REQUEST:
-                if (request.senderType == "v") {
-                    this.onViewConnectRequest(request);
-                } else if (request.senderType == "c") {
-                    this.onControllerConnectRequest(request)
+                if (message.senderType == "v") {
+                    this.onViewConnectRequest(message);
+                } else if (message.senderType == "c") {
+                    this.onControllerConnectRequest(message)
                 } else {
-                    Utils.error("Unknown senderType: " + request.senderType)
+                    Utils.error("Unknown senderType: " + message.senderType)
                 }
                 break;
             case EVENT_TYPE.DISCONNECT:
-                if (request.senderType == "v") {
-                    let player = this._playerDict.getValue(request.playerId);
+                if (message.senderType == "v") {
+                    let player = this._playerDict.getValue(message.playerId);
                     if (player) {
                         player.viewConnected = false;
                     }
-                } else if (request.senderType == "c") {
-                    let player = this._playerDict.getValue(request.playerId);
+                } else if (message.senderType == "c") {
+                    let player = this._playerDict.getValue(message.playerId);
                     if (player) {
                         player.controllerConnected = false;
                     }
                 } else {
-                    Utils.error("Unknown senderType: " + request.senderType)
+                    Utils.error("Unknown senderType: " + message.senderType)
                 }
+                break;
+            case EVENT_TYPE.CTRL_CHANGE_DIRECTION:
+                let player = this._playerDict.getValue(message.playerId);
+                player.nextDirection = message.value['d'];
                 break;
             default:
         }
@@ -177,7 +183,7 @@ export class Game {
             this.writeMessage(message);
         }
         this._countDownTimeLeft -= 1000;
-        
+
         // check if countdown is 0
         if (this._countDownTimeLeft == 0) {
             clearInterval(this._countDownTimer);
@@ -186,22 +192,94 @@ export class Game {
     }
 
     private runningState() {
-        
-    }
-
-    private endState() {
-
-    }
-
-    private sendAllPositions() {
-        let positionList = new Collections.LinkedList();
         for (let player of this._playerDict.values()) {
-            positionList.add({ "p": player.id, "x": 0, "y": 0, "d": 0.0 });
+            if (player.state == PLAYER_STATE.PLAYING) {
+                player.currentDirection = (player.currentDirection + player.nextDirection) % 360;
+                player.nextDirection = PLAYER_DIRECTION.UP;
+
+                switch (player.currentDirection) {
+                    case PLAYER_DIRECTION.UP:
+                        player.y += 1;
+                        break;
+                    case PLAYER_DIRECTION.RIGHT:
+                        player.x += 1;
+                        break;
+                    case PLAYER_DIRECTION.DOWN:
+                        player.y -= 1;
+                        break;
+                    case PLAYER_DIRECTION.LEFT:
+                        player.x -= 1;
+                        break;
+                    default:
+                        Utils.error("Unknown state!!!");
+                }
+
+                if (!this._grid.pushPlayerToCoordinates(player.id, player.x, player.y)) {
+                    Utils.debug("Player died [" + player.id + "]");
+                    player.state = PLAYER_STATE.DEAD;
+                }
+            }
+        }
+
+        // notify views with new player positions
+        let value = []
+        let playerAliveCount = 0;
+        for (let player of this._playerDict.values()) {
+            if (player.state == PLAYER_STATE.PLAYING) {
+                value.push({ 'p': player.id, 'x': player.x, 'y': player.y, 'd': player.currentDirection });
+
+                playerAliveCount++;
+            }
+        }
+
+        if (playerAliveCount > 1) {
+            this.sendAllPositions();
         }
 
         for (let player of this._playerDict.values()) {
-            let message = new Message(this.gameId, player.id, "g", EVENT_TYPE.POSITION, positionList.toArray());
-            this.writeMessage(message);
+            if (player.state == PLAYER_STATE.DEAD) {
+                player.state = PLAYER_STATE.LOSE;
+                this.sendEndMessage(player);
+            }
+
+            if (playerAliveCount == 1) {
+                if (player.state == PLAYER_STATE.PLAYING) {
+                    player.state = PLAYER_STATE.WIN;
+                    this.sendEndMessage(player);
+                }
+            }
+        }
+
+        if (playerAliveCount == 0) {
+            this._state = GAME_STATE.END;
+            Utils.debug("END");
+        }
+    }
+
+    private sendEndMessage(player: Player) {
+        let value = {}
+        value['win'] = (player.state == PLAYER_STATE.WIN)
+        let message = new Message(this.gameId, player.id, 'g', EVENT_TYPE.GAME_END, value);
+        this.writeMessage(message);
+    }
+
+    private endState() {
+        process.exit();
+    }
+
+    private sendAllPositions() {
+        let value = []
+        for (let player of this._playerDict.values()) {
+            if (player.state == PLAYER_STATE.PLAYING) {
+                value.push({ 'p': player.id, 'x': player.x, 'y': player.y, 'd': player.currentDirection });
+            }
+        }
+
+        if (value.length > 0) {
+            for (let player of this._playerDict.values()) {
+                let message = new Message(this.gameId, player.id, "g", EVENT_TYPE.POSITION, value);
+                this.writeMessage(message);
+            }
         }
     }
 
