@@ -8,6 +8,7 @@ import * as WebSocket from 'ws'
 
 // let ws = new WebSocket('ws:172.17.0.1:8080')
 let ws = new WebSocket('ws:193.175.85.50:80')
+
 // let wss = new WebSocket.Server({ port: 8080 })
 
 console.log('wetron-backend-game-server start')
@@ -25,18 +26,18 @@ game.writeMessage = (message) => {
 }
 
 ws.on('message', (message) => {
-    Utils.debug("ws recv: " + message)    
-    game.onMessage(Message.fromJson(JSON.parse(message.toString())))
+    Utils.debug("ws recv: " + message)    ;
+    game.onMessage(Message.fromJson(JSON.parse(message.toString())));
 });
 
 ws.on('open', () => {
-    Utils.debug("ws open")
-    game.onConnect()
+    Utils.debug("ws open");
+    game.onConnect();
 });
 
 // init Main Timer
 let timer: NodeJS.Timer
-timer = global.setInterval(function () {
+timer = setInterval(function () {
     game.onMainTimerTick();
 }, 1000);
 

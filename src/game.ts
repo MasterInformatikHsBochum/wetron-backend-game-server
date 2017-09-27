@@ -22,8 +22,9 @@ export enum GAME_STATE {
 export class Game {
     public writeMessage: (message: Message) => void;
     private _playerDict = new Collections.Dictionary<number, Player>();
-    private _state = GAME_STATE.WAITING_FOR_PLAYERS
-    private _countDown = 0
+    private _state = GAME_STATE.WAITING_FOR_PLAYERS;
+    private _countDownTimer: NodeJS.Timer;
+    private _countDownTimeLeft = 0;
 
     constructor(
         readonly gameId: number,
@@ -79,15 +80,18 @@ export class Game {
     public onMainTimerTick() {
         switch (this._state) {
             case GAME_STATE.WAITING_FOR_PLAYERS:
+                // Wait until every Controller and View is Connected
                 this.waitingForPlayersState();
                 break;
             case GAME_STATE.COUNTDOWN:
-                this.countdownState();
+                // Countdowntimer runs -> 3.. 2.. 1.. GO
                 break;
             case GAME_STATE.RUNNING:
+                // Game is running
                 this.runningState();
                 break;
             case GAME_STATE.END:
+                // game ends when only one player is alive
                 this.endState();
                 break;
             default:
@@ -104,7 +108,7 @@ export class Game {
 
             value["success"] = true
 
-            let otherPlayerList: Number[] = new Array()
+            let otherPlayerList: Number[] = new Array();
             for (let playerId of this._playerDict.keys()) {
                 if (playerId != request.playerId) {
                     otherPlayerList.push(playerId)
@@ -150,28 +154,38 @@ export class Game {
         } else {
             // send positions of all players to each player
             this.sendAllPositions();
-
+            this.startCountDown();
             this._state = GAME_STATE.COUNTDOWN;
         }
     }
 
-    private sendCountDown() {
+    private startCountDown() {
+        this._countDownTimeLeft = 4000;
+        const that = this;
+        this._countDownTimer = setInterval(function () {
+            that.onCountDownTimerTick();
+        }, 1000);
+    }
+
+    private onCountDownTimerTick() {
+        // send countdown-to all players (3.. 2.. 1.. GO)
         for (let playerId of this._playerDict.keys()) {
             let value = {};
-            value["countdown-ms"] = 3000;
+            value["countdown-ms"] = this._countDownTimeLeft - 1000;
             let message = new Message(this.gameId, playerId, "g", EVENT_TYPE.COUNTDOWN, value);
             this.writeMessage(message);
         }
-    }
-
-    private countdownState() {
-        if (this._countDown == 0) {
+        this._countDownTimeLeft -= 1000;
+        
+        // check if countdown is 0
+        if (this._countDownTimeLeft == 0) {
+            clearInterval(this._countDownTimer);
             this._state = GAME_STATE.RUNNING;
         }
     }
 
     private runningState() {
-
+        
     }
 
     private endState() {
@@ -181,7 +195,7 @@ export class Game {
     private sendAllPositions() {
         let positionList = new Collections.LinkedList();
         for (let player of this._playerDict.values()) {
-            positionList.add({ "p": player.id, "x": 0, "y": 0, "d": 0.0 })
+            positionList.add({ "p": player.id, "x": 0, "y": 0, "d": 0.0 });
         }
 
         for (let player of this._playerDict.values()) {
