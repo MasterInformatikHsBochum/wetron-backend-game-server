@@ -10,7 +10,15 @@ export class Grid {
     }
 
     public isCoordinateEmpty(x: number, y: number): boolean {
-        if (this._grid[x][y] > 0) {
+        if (x < 0) {
+            return false;
+        } else if (x > this.width) {
+            return false;
+        } else if (y < 0) {
+            return false;
+        } else if (y > this.height) {
+            return false;
+        } else if (this._grid[x][y] > 0) {
             return false;
         } else {
             return true;
