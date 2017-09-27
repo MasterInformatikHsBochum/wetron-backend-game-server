@@ -1,3 +1,4 @@
+import { Grid } from './grid';
 import { Player } from './player'
 import { Message, EVENT_TYPE } from './message'
 import * as Collections from 'typescript-collections';
