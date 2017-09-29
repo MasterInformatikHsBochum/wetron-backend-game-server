@@ -14,11 +14,22 @@ let ws = new WebSocket('ws:5.45.108.170:8000') // marius
 
 console.log('wetron-backend-game-server start')
 
+let gameId: number = 1;
+let players: number = 2;
+process.argv.forEach(function (val, index, array) {
+    if (val.startsWith('g=')) {
+        gameId = parseInt(val.slice(2));
+    } else if (val.startsWith('p=')) {
+        players = parseInt(val.slice(2));
+    }
+});
+
 // Init Game
 let playerList = new Collections.LinkedList< Player>();
-playerList.add(new Player(1))
-playerList.add(new Player(2))
-let game = new Game(1, playerList)
+for (let i: number = 0; i < players; i++) {
+    playerList.add(new Player(i + 1));
+}
+let game = new Game(gameId, playerList)
 
 // Init Web Socket
 game.writeMessage = (message) => {
