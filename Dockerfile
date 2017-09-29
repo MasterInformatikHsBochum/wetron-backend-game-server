@@ -11,4 +11,4 @@ RUN npm install
 # Bundle app source
 COPY . .
 
-CMD ["npm", "start"]
+ENTRYPOINT ["./node_modules/.bin/ts-node", "./src/index.ts"]
