@@ -8,7 +8,8 @@ import * as WebSocket from 'ws'
 
 // let ws = new WebSocket('ws:172.17.0.1:8080') // local
 // let ws = new WebSocket('ws:193.175.85.50:80') // hs-bochum
-let ws = new WebSocket('ws:5.45.108.170:8000') // marius
+// let ws = new WebSocket('ws:5.45.108.170:8000') // marius
+const ws = new WebSocket('wss://wetron.tk/websocket/');
 
 // let wss = new WebSocket.Server({ port: 8080 })
 
