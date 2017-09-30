@@ -1,17 +1,9 @@
 import { Grid } from './grid';
-import { PLAYER_DIRECTION, Player, PLAYER_STATE } from './player';
-import { Message, EVENT_TYPE } from './message'
+import { Message, EVENT_TYPE } from './message';
+import { PLAYER_DIRECTION, Player, PLAYER_STATE } from './player';;
+import { Utils } from './utils';
+import * as fs from 'fs';
 import * as Collections from 'typescript-collections';
-import { Utils } from './utils'
-
-// TODO
-// sender:
-// receiver
-// - g: game
-// - c1: controller player 1
-// - v1: view player 1
-
-// production target als npm
 
 export enum GAME_STATE {
     WAITING_FOR_PLAYERS,
@@ -38,6 +30,8 @@ export class Game {
             this._playerDict.setValue(player.id, player);
             player.x = player.id * 20;
         });
+
+        this.writeGameStatusToFile();        
     }
 
     public onConnect() {
@@ -66,6 +60,7 @@ export class Game {
                     let player = this._playerDict.getValue(message.playerId);
                     if (player) {
                         player.viewConnected = false;
+                        this.writeGameStatusToFile();
                     }
                 } else if (message.senderType == "c") {
                     let player = this._playerDict.getValue(message.playerId);
@@ -106,12 +101,34 @@ export class Game {
         }
     }
 
+    private writeGameStatusToFile() {
+        const filename = '/tmp/game-status.json';
+        let playerList = [];
+        for (let player of this._playerDict.values()) {
+            if (player.viewConnected) {
+                playerList.push({
+                    'id': player.id
+                });
+            }
+        }
+        let data = {
+            'max-players': this._playerDict.size(),
+            'players': playerList
+        }
+        fs.writeFile(filename, JSON.stringify(data), (err) => {
+            if (err) {
+                Utils.error("Could not write file: " + filename);
+            }
+        });
+    }
+
     private onViewConnectRequest(request: Message) {
         let value = {}
         let player = this._playerDict.getValue(request.playerId)
 
         if (player && player.viewConnected == false) {
             player.viewConnected = true
+            this.writeGameStatusToFile();
 
             value["success"] = true
 
@@ -169,7 +186,7 @@ export class Game {
     private startCountDown() {
         this._countDownTimeLeft = 4000;
         const that = this;
-        this._countDownTimer = setInterval(function () {
+        this._countDownTimer = setInterval(() => {
             that.onCountDownTimerTick();
         }, 1000);
     }

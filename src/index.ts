@@ -27,7 +27,7 @@ process.argv.forEach(function (val, index, array) {
 console.log(`gameId: ${gameId}, players: ${players}`);
 
 // Init Game
-let playerList = new Collections.LinkedList< Player>();
+let playerList = new Collections.LinkedList<Player>();
 for (let i: number = 0; i < players; i++) {
     playerList.add(new Player(i + 1));
 }
