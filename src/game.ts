@@ -128,10 +128,10 @@ export class Game {
         let player = this._playerDict.getValue(request.playerId)
 
         if (player && player.viewConnected == false) {
-            player.viewConnected = true
+            player.viewConnected = true;
             this.writeGameStatusToFile();
 
-            value["success"] = true
+            value['success'] = true;
 
             let otherPlayerList: Number[] = new Array();
             for (let playerId of this._playerDict.keys()) {
@@ -139,8 +139,9 @@ export class Game {
                     otherPlayerList.push(playerId)
                 }
             }
+            value['o'] = otherPlayerList;
 
-            value["o"] = otherPlayerList
+            value['grid'] = { 'w': this._grid.width, 'h': this._grid.height };
         } else {
             value["success"] = false;
         }
