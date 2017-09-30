@@ -112,6 +112,7 @@ export class Game {
             }
         }
         let data = {
+            'id': this.gameId,
             'max-players': this._playerDict.size(),
             'players': playerList
         }
