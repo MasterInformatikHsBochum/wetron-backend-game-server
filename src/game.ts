@@ -113,7 +113,7 @@ export class Game {
         }
         let data = {
             'id': this.gameId,
-            'max-players': this._playerDict.size(),
+            'maxPlayers': this._playerDict.size(),
             'players': playerList
         }
         fs.writeFile(filename, JSON.stringify(data), (err) => {
