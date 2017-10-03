@@ -18,7 +18,7 @@ export class Game {
     private _state = GAME_STATE.WAITING_FOR_PLAYERS;
     private _countDownTimer: NodeJS.Timer;
     private _countDownTimeLeft = 0;
-    private _grid = new Grid(100, 100);
+    private _grid = new Grid(1000, 1000);
 
     constructor(
         readonly gameId: number,
