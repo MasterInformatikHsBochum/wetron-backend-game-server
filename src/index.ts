@@ -16,7 +16,8 @@ const ws = new WebSocket('wss://wetron.tk/websocket/');
 console.log('wetron-backend-game-server start')
 
 let gameId: number = 1;
-let players: number = 5;
+let players: number = 2;
+const fps: number = 30;
 process.argv.forEach(function (val, index, array) {
     if (val.startsWith('g=')) {
         gameId = parseInt(val.slice(2));
@@ -54,7 +55,7 @@ ws.on('open', () => {
 let timer: NodeJS.Timer
 timer = setInterval(function () {
     game.onMainTimerTick();
-}, 1000);
+}, 1000 / 30);
 
 // wss.on('connection', (ws, req) => {
 //     ws.on('message', (message) => {
