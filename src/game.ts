@@ -27,12 +27,11 @@ export class Game {
         // add players to dictionary
         playerList.forEach(player => {
             this._playerDict.setValue(player.id, player);
-            player.x = player.id * 20;
         });
 
         // calculate size of grid depending on players and fps
         let maxPlayerPerSide = (Math.floor(this._playerDict.size() / 4))
-        if (maxPlayerPerSide % 4 != 0) {
+        if ((this._playerDict.size() % 4) != 0) {
             maxPlayerPerSide += 1;
         }
         // set base width
@@ -84,12 +83,12 @@ export class Game {
                 // SOUTH
                 player.currentDirection = PLAYER_DIRECTION.UP;
                 player.x = x_offset + ((player.id + 2) / 4) * Math.floor(inner_height / (south_count + 1));
-                player.y = y_offset + inner_height;
+                player.y = y_offset;
             } else {
                 // NORTH
                 player.currentDirection = PLAYER_DIRECTION.DOWN;
                 player.x = x_offset + ((player.id + 3) / 4) * Math.floor(inner_height / (north_count + 1));
-                player.y = y_offset;
+                player.y = y_offset + inner_height;
             }
 
             Utils.debug('player(id: ' + player.id + ' x: ' + player.x + ' y: ' + player.y + ' d: ' + player.currentDirection + ')');
@@ -100,6 +99,11 @@ export class Game {
     public onConnect() {
         let message = new Message(this.gameId, null, "g", EVENT_TYPE.CONNECT_REQUEST, null)
         this.writeMessage(message)
+
+        for(let player of this._playerDict.values()) {
+            player.controllerConnected = true;
+            player.viewConnected = true;
+        }
     }
 
     public onMessage(message: Message) {
