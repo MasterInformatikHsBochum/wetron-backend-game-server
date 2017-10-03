@@ -100,10 +100,10 @@ export class Game {
         let message = new Message(this.gameId, null, "g", EVENT_TYPE.CONNECT_REQUEST, null)
         this.writeMessage(message)
 
-        for(let player of this._playerDict.values()) {
-            player.controllerConnected = true;
-            player.viewConnected = true;
-        }
+        // for(let player of this._playerDict.values()) {
+        //     player.controllerConnected = true;
+        //     player.viewConnected = true;
+        // }
     }
 
     public onMessage(message: Message) {
