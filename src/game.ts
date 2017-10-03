@@ -18,20 +18,83 @@ export class Game {
     private _state = GAME_STATE.WAITING_FOR_PLAYERS;
     private _countDownTimer: NodeJS.Timer;
     private _countDownTimeLeft = 0;
-    private _grid = new Grid(100, 100);
+    private _grid: Grid;
 
     constructor(
         readonly gameId: number,
         playerList: Collections.LinkedList<Player>
     ) {
-
         // add players to dictionary
         playerList.forEach(player => {
             this._playerDict.setValue(player.id, player);
             player.x = player.id * 20;
         });
 
-        this.writeGameStatusToFile();        
+        // calculate size of grid depending on players and fps
+        let maxPlayerPerSide = (Math.floor(this._playerDict.size() / 4))
+        if (maxPlayerPerSide % 4 != 0) {
+            maxPlayerPerSide += 1;
+        }
+        // set base width
+        let width = 800;
+        if (maxPlayerPerSide > 1) {
+            // add width based on max-player per side
+            width += (maxPlayerPerSide - 1) * 200;
+        }
+        this._grid = new Grid(width, width);
+        Utils.debug('grid(w: ' + this._grid.width + ' h: ' + this._grid.height);
+
+        // calc player start positions
+        this.calcPlayerStartPositions();
+
+        // write game-status to file for rest-api
+        this.writeGameStatusToFile();
+    }
+
+    private calcPlayerStartPositions() {
+        // calculate inner rectangle / starting line
+        let x_offset = Math.floor(0.1 * this._grid.width);
+        let inner_width = Math.floor(this._grid.width * 0.8);
+        let y_offset = Math.floor(0.1 * this._grid.height);
+        let inner_height = Math.floor(0.8 * this._grid.height);
+
+        // calc players per side
+        let count = this._playerDict.size();
+        let east_count = Math.floor(count / 4);
+        count -= east_count;
+        let west_count = Math.floor(count / 3);
+        count -= west_count;
+        let south_count = Math.floor(count / 2);
+        count -= south_count;
+        let north_count = Math.floor(count);
+
+        for (let player of this._playerDict.values()) {
+            // set coordinates of players + view direction
+            if (player.id % 4 == 0) {
+                // EAST
+                player.currentDirection = PLAYER_DIRECTION.LEFT;
+                player.x = x_offset + inner_width;
+                player.y = y_offset + (player.id / 4) * Math.floor(inner_height / (east_count + 1));
+            } else if (player.id % 3 == 0) {
+                // WEST
+                player.currentDirection = PLAYER_DIRECTION.RIGHT;
+                player.x = x_offset;
+                player.y = y_offset + ((player.id + 1) / 4) * Math.floor(inner_height / (west_count + 1));
+            } else if (player.id % 2 == 0) {
+                // SOUTH
+                player.currentDirection = PLAYER_DIRECTION.UP;
+                player.x = x_offset + ((player.id + 2) / 4) * Math.floor(inner_height / (south_count + 1));
+                player.y = y_offset + inner_height;
+            } else {
+                // NORTH
+                player.currentDirection = PLAYER_DIRECTION.DOWN;
+                player.x = x_offset + ((player.id + 3) / 4) * Math.floor(inner_height / (north_count + 1));
+                player.y = y_offset;
+            }
+
+            Utils.debug('player(id: ' + player.id + ' x: ' + player.x + ' y: ' + player.y + ' d: ' + player.currentDirection + ')');
+            
+        }
     }
 
     public onConnect() {

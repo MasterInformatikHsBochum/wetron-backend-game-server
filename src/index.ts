@@ -16,7 +16,7 @@ const ws = new WebSocket('wss://wetron.tk/websocket/');
 console.log('wetron-backend-game-server start')
 
 let gameId: number = 1;
-let players: number = 2;
+let players: number = 5;
 process.argv.forEach(function (val, index, array) {
     if (val.startsWith('g=')) {
         gameId = parseInt(val.slice(2));
