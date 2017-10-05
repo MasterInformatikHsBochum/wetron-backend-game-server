@@ -92,7 +92,7 @@ export class Game {
             }
 
             Utils.debug('player(id: ' + player.id + ' x: ' + player.x + ' y: ' + player.y + ' d: ' + player.currentDirection + ')');
-            
+
         }
     }
 
@@ -278,6 +278,9 @@ export class Game {
     }
 
     private runningState() {
+        let value = []
+        let playerAliveCount = 0;
+
         for (let player of this._playerDict.values()) {
             if (player.state == PLAYER_STATE.PLAYING) {
                 player.currentDirection = (player.currentDirection + player.nextDirection) % 360;
@@ -300,34 +303,36 @@ export class Game {
                         Utils.error("Unknown state!!!");
                 }
 
+                // push direction of player
+                value.push({ 'p': player.id, 'x': player.x, 'y': player.y, 'd': player.currentDirection });
+
+                // check if someone dies
                 if (!this._grid.pushPlayerToCoordinates(player.id, player.x, player.y)) {
                     Utils.debug("Player died [" + player.id + "]");
                     player.state = PLAYER_STATE.DEAD;
                 }
+
+                // calculate alive people
+                if (player.state == PLAYER_STATE.PLAYING) {
+                    playerAliveCount++;
+                }
             }
         }
 
-        // notify views with new player positions
-        let value = []
-        let playerAliveCount = 0;
-        for (let player of this._playerDict.values()) {
-            if (player.state == PLAYER_STATE.PLAYING) {
-                value.push({ 'p': player.id, 'x': player.x, 'y': player.y, 'd': player.currentDirection });
-
-                playerAliveCount++;
-            }
-        }
-
+        // send positions to everyone living
         if (playerAliveCount > 1) {
             this.sendAllPositions();
         }
 
+        // calculate win / lose
         for (let player of this._playerDict.values()) {
+            // player lost
             if (player.state == PLAYER_STATE.DEAD) {
                 player.state = PLAYER_STATE.LOSE;
                 this.sendEndMessage(player);
             }
 
+            // player wins
             if (playerAliveCount == 1) {
                 if (player.state == PLAYER_STATE.PLAYING) {
                     player.state = PLAYER_STATE.WIN;
@@ -336,6 +341,7 @@ export class Game {
             }
         }
 
+        // game end
         if (playerAliveCount == 0) {
             this._state = GAME_STATE.END;
             Utils.debug("END");
