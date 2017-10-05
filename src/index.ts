@@ -13,7 +13,7 @@ const ws = new WebSocket('wss://wetron.tk/websocket/');
 
 // let wss = new WebSocket.Server({ port: 8080 })
 
-console.log('wetron-backend-game-server start')
+Utils.debug('wetron-backend-game-server start')
 
 let gameId: number = 1;
 let players: number = 7;
@@ -23,10 +23,12 @@ process.argv.forEach(function (val, index, array) {
         gameId = parseInt(val.slice(2));
     } else if (val.startsWith('p=')) {
         players = parseInt(val.slice(2));
+    } else if (val.startsWith('v')) {
+        Utils.enableLog = true
     }
 });
 
-console.log(`gameId: ${gameId}, players: ${players}`);
+Utils.debug(`gameId: ${gameId}, players: ${players}`);
 
 // Init Game
 let playerList = new Collections.LinkedList<Player>();
